@@ -19,6 +19,7 @@ import android.content.IntentFilter;
 import android.os.Build;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
+import android.bluetooth.BluetoothA2dp;
 
 public class AudioJackModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
     private static final String MODULE_NAME = "AudioJack";
@@ -55,6 +56,13 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
                         pluggedIn = true;
                     }
                 }
+                
+                // Check whether connection status of bluetooth audio device has been changed.
+                else if (intentAction == BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED) {
+                    if (intent.getIntExtra(BluetoothA2dp.EXTRA_STATE, -1) == BluetoothA2dp.STATE_CONNECTED) {
+                        pluggedIn = true;
+                    }
+                }
 
                 WritableNativeMap data = new WritableNativeMap();
                 data.putBoolean(IS_PLUGGED_IN, pluggedIn);
@@ -69,6 +77,7 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
         IntentFilter headsetFilter = new IntentFilter();
         headsetFilter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
         headsetFilter.addAction(AudioManager.ACTION_HEADSET_PLUG);
+        headsetFilter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
         reactContext.registerReceiver(headsetReceiver, headsetFilter);
     }
 
@@ -84,7 +93,7 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
         AudioManager audioManager = (AudioManager) getReactApplicationContext().getSystemService(Context.AUDIO_SERVICE);
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return audioManager.isWiredHeadsetOn();
+            return audioManager.isWiredHeadsetOn() || audioManager.isBluetoothA2dpOn();
         } else {
             AudioDeviceInfo[] devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
             for (int i = 0; i < devices.length; i++) {
@@ -94,6 +103,12 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
                     return true;
                 }
                 if (deviceType == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+                    return true;
+                }
+                if (deviceType == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) {
+                    return true;
+                }
+                if (deviceType == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
                     return true;
                 }
             }
