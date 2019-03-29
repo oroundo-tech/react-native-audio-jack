@@ -41,10 +41,23 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
         headsetReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                int pluggedInState = intent.getIntExtra("state", -1);
+                boolean pluggedIn = false;
+                String intentAction = intent.getAction();
+
+                // Set pluggedIn to false when ACTION_AUDIO_BECOMING_NOISY is encountered.
+                if (intentAction == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                    pluggedIn = false;
+                }
+
+                // Check whether connection status of audio jack has been changed.
+                else if (intentAction == AudioManager.ACTION_HEADSET_PLUG) {
+                    if (intent.getIntExtra("state", -1) == 1) {
+                        pluggedIn = true;
+                    }
+                }
 
                 WritableNativeMap data = new WritableNativeMap();
-                data.putBoolean(IS_PLUGGED_IN, pluggedInState == 1);
+                data.putBoolean(IS_PLUGGED_IN, pluggedIn);
 
                 if (reactContext.hasActiveCatalystInstance()) {
                     reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(AUDIO_CHANGED_NOTIFICATION,
@@ -53,7 +66,9 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
             }
         };
 
-        IntentFilter headsetFilter = new IntentFilter(Intent.ACTION_HEADSET_PLUG);
+        IntentFilter headsetFilter = new IntentFilter();
+        headsetFilter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        headsetFilter.addAction(AudioManager.ACTION_HEADSET_PLUG);
         reactContext.registerReceiver(headsetReceiver, headsetFilter);
     }
 
@@ -74,7 +89,11 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
             AudioDeviceInfo[] devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
             for (int i = 0; i < devices.length; i++) {
                 AudioDeviceInfo device = devices[i];
-                if (device.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
+                int deviceType = device.getType();
+                if (deviceType == AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
+                    return true;
+                }
+                if (deviceType == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
                     return true;
                 }
             }
@@ -108,12 +127,10 @@ public class AudioJackModule extends ReactContextBaseJavaModule implements Lifec
 
     @Override
     public void onHostResume() {
-        maybeRegisterReceiver();
     }
 
     @Override
     public void onHostPause() {
-        maybeUnregisterReceiver();
     }
 
     @Override
