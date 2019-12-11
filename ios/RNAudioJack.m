@@ -57,6 +57,18 @@ static NSString * const IS_PLUGGED_IN = @"isPluggedIn";
         if ([[desc portType] isEqualToString:AVAudioSessionPortHeadphones]) {
             return YES;
         }
+        if ([[desc portType] isEqualToString:AVAudioSessionPortUSBAudio]) {
+            return YES;
+        }
+        if ([[desc portType] isEqualToString:AVAudioSessionPortLineOut]) {
+            return YES;
+        }
+        if ([[desc portType] isEqualToString:AVAudioSessionPortBluetoothLE]) {
+            return YES;
+        }
+        if ([[desc portType] isEqualToString:AVAudioSessionPortBluetoothA2DP]) {
+            return YES;
+        }
     }
 
     return NO;
